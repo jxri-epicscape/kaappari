@@ -1,42 +1,72 @@
+const JPEG_THRESHOLD = 10000;
+
+const sendCommand = (target, method, params = {}) =>
+  new Promise((resolve, reject) => {
+    chrome.debugger.sendCommand(target, method, params, (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve(result);
+      }
+    });
+  });
+
 chrome.action.onClicked.addListener(async (tab) => {
-  console.log("Käynnistetään kaappaus...");
+  console.log("Klikattu! Tab:", tab.id, tab.url);
+
+  if (!tab.url || !tab.url.startsWith("http")) {
+    console.error("Ei voi kaapata tätä sivua:", tab.url);
+    chrome.action.setBadgeText({ text: "!" });
+    return;
+  }
+
   const target = { tabId: tab.id };
 
   try {
-    // 1. Yritetään kiinnittää debugger
+    chrome.action.setBadgeText({ text: "..." });
+
     await chrome.debugger.attach(target, "1.3");
-    console.log("Debugger kiinnitetty!");
+    await sendCommand(target, "Page.enable", {});
 
-    // 2. Haetaan mitat
-    chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, (metrics) => {
-      if (!metrics) {
-        console.error("Mittausten haku epäonnistui.");
-        chrome.debugger.detach(target);
-        return;
+    const metrics = await sendCommand(target, "Page.getLayoutMetrics", {});
+    const { width, height } = metrics.contentSize;
+    console.log("Mitat:", width, "x", height);
+
+    // Guardrail: yli 10 000px sivu -> JPEG muistin säästämiseksi
+    const useJpeg = height > JPEG_THRESHOLD;
+    const format = useJpeg ? "jpeg" : "png";
+    const quality = useJpeg ? 85 : undefined;
+    console.log(`Käytetään: ${format}${useJpeg ? " (guardrail aktivoitu, sivu yli 10 000px)" : ""}`);
+
+    const captureParams = {
+      format,
+      captureBeyondViewport: true,
+      clip: {
+        x: 0,
+        y: 0,
+        width: Math.floor(width),
+        height: Math.floor(height),
+        scale: 1
       }
+    };
+    if (quality !== undefined) captureParams.quality = quality;
 
-      const { contentSize } = metrics;
-      console.log("Mitat saatu:", contentSize.width, "x", contentSize.height);
+    const result = await sendCommand(target, "Page.captureScreenshot", captureParams);
 
-      // 3. Otetaan kuvakaappaus
-      chrome.debugger.sendCommand(target, "Page.captureScreenshot", {
-        format: "png",
-        captureBeyondViewport: true,
-        clip: { x: 0, y: 0, width: Math.floor(contentSize.width), height: Math.floor(contentSize.height), scale: 1 }
-      }, (result) => {
-        if (result && result.data) {
-          console.log("Kuva valmis, tallennetaan...");
-          chrome.downloads.download({
-            url: "data:image/png;base64," + result.data,
-            filename: `kaappaus-${Date.now()}.png`
-          });
-        }
-        chrome.debugger.detach(target);
-        console.log("Valmis!");
-      });
+    const ext = useJpeg ? "jpg" : "png";
+    await chrome.downloads.download({
+      url: `data:image/${format};base64,` + result.data,
+      filename: `kaappaus-${Date.now()}.${ext}`,
+      saveAs: true  // kysyy tallennussijainnin käyttäjältä
     });
+
+    chrome.action.setBadgeText({ text: "✓" });
+    console.log("Valmis!");
+
   } catch (err) {
-    console.error("Virhe prosessissa:", err.message);
+    console.error("Virhe:", err.message);
+    chrome.action.setBadgeText({ text: "!" });
+  } finally {
     chrome.debugger.detach(target).catch(() => {});
   }
 });
