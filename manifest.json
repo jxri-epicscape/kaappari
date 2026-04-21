@@ -1,10 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Koko Sivun Kaappari",
+  "name": "Native Full-Page Capture Engine",
   "version": "1.0",
-  "permissions": ["debugger", "activeTab", "downloads"],
+  "description": "Capture entire web pages in high definition using the native Blink rendering engine.",
+  "permissions": [
+    "debugger",
+    "downloads"
+  ],
   "action": {
-    "default_title": "Ota koko sivun kuvakaappaus"
+    "default_title": "Take a full page screenshot",
+    "default_icon": {
+      "16": "kaappari16.png",
+      "48": "kaappari48.png",
+      "128": "kaappari128.png"
+    }
+  },
+  "icons": {
+    "16": "kaappari16.png",
+    "48": "kaappari48.png",
+    "128": "kaappari128.png"
   },
   "background": {
     "service_worker": "background.js"
