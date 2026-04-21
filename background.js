@@ -11,34 +11,37 @@ const sendCommand = (target, method, params = {}) =>
     });
   });
 
-const setBadge = (text, title = "") => {
-  chrome.action.setBadgeText({ text });
-  chrome.action.setTitle({ title: title || "Native Full-Page Capture Engine" });
+const setBadge = (tabId, text, title = "Native Full-Page Capture Engine") => {
+  chrome.action.setBadgeText({ text, tabId });
+  chrome.action.setTitle({ title, tabId });
 };
 
 chrome.action.onClicked.addListener(async (tab) => {
-  console.log("Klikattu! Tab:", tab.id, tab.url);
+  const tabId = tab.id;
+  console.log("Klikattu! Tab:", tabId, tab.url);
 
   if (!tab.url || !tab.url.startsWith("http")) {
-    setBadge("!", "Ei voi kaapata tätä sivua: " + tab.url);
+    setBadge(tabId, "!", "Ei voi kaapata tätä sivua: " + tab.url);
     console.error("Ei voi kaapata:", tab.url);
     return;
   }
 
-  const target = { tabId: tab.id };
+  const target = { tabId };
 
   try {
-    setBadge("...", "Kiinnitetään debuggeria...");
+    setBadge(tabId, "...", "Kiinnitetään debuggeria...");
+
     await chrome.debugger.attach(target, "1.3");
     console.log("Debugger kiinnitetty");
 
     await sendCommand(target, "Page.enable", {});
     console.log("Page enabled");
 
+    setBadge(tabId, "...", "Haetaan sivun mittoja...");
+
     const metrics = await sendCommand(target, "Page.getLayoutMetrics", {});
     console.log("Metrics raw:", JSON.stringify(metrics));
 
-    // Tuetaan eri Chrome-versioiden kenttänimiä
     const size =
       metrics.cssContentSize ??
       metrics.contentSize ??
@@ -52,12 +55,11 @@ chrome.action.onClicked.addListener(async (tab) => {
     const height = Math.floor(size.height);
     console.log("Mitat:", width, "x", height);
 
-    // Guardrail: yli 10 000px -> JPEG muistin säästämiseksi
     const useJpeg = height > JPEG_THRESHOLD;
     const format = useJpeg ? "jpeg" : "png";
-    console.log(`Format: ${format}${useJpeg ? " (guardrail aktivoitu, korkeus yli 10 000px)" : ""}`);
+    console.log(`Format: ${format}${useJpeg ? " (guardrail, korkeus yli 10 000px)" : ""}`);
 
-    setBadge("...", "Kaapataan sivua...");
+    setBadge(tabId, "...", "Kaapataan sivua...");
 
     const captureParams = {
       format,
@@ -81,12 +83,12 @@ chrome.action.onClicked.addListener(async (tab) => {
       saveAs: true
     });
 
-    setBadge("✓", "Kaappaus valmis!");
+    setBadge(tabId, "✓", "Kaappaus valmis!");
     console.log("Valmis!");
 
   } catch (err) {
     console.error("Virhe:", err.message);
-    setBadge("!", "Virhe: " + err.message);
+    setBadge(tabId, "!", "Virhe: " + err.message);
   } finally {
     chrome.debugger.detach(target).catch(() => {});
   }
