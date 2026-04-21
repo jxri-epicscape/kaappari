@@ -5,7 +5,8 @@
   "description": "Capture entire web pages in high definition using the native Blink rendering engine.",
   "permissions": [
     "debugger",
-    "downloads"
+    "downloads",
+    "notifications"
   ],
   "action": {
     "default_title": "Take a full page screenshot",
