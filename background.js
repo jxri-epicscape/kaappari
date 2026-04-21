@@ -1,39 +1,27 @@
 chrome.action.onClicked.addListener(async (tab) => {
-  // 1. Turvatarkistus: Ei toimi Chromen sisäisillä sivuilla
-  if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) {
-    console.warn("Cannot capture system pages.");
-    return;
-  }
+  console.log("Nappia painettu välilehdellä:", tab.id);
 
   const target = { tabId: tab.id };
 
   try {
-    // 2. Kiinnitetään debuggeri
+    // Pakotetaan irrotus ensin, jos edellinen kerta jäi jumiin
+    try {
+      await chrome.debugger.detach(target);
+    } catch (e) {
+      // Ei haittaa vaikka epäonnistuu
+    }
+
+    console.log("Kiinnitetään debuggeri...");
     await chrome.debugger.attach(target, "1.3");
+    console.log("Debuggeri kiinnitetty.");
 
-    // 3. Haetaan mitat (käytetään promise-pohjaista kutsua)
-    chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, async (metrics) => {
-      if (chrome.runtime.lastError) {
-        console.error(chrome.runtime.lastError);
-        chrome.debugger.detach(target);
-        return;
-      }
-
+    chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, (metrics) => {
+      console.log("Metriikat saatu:", metrics);
+      
       const { contentSize } = metrics;
       
-      // --- SUOJAKAIDE ---
-      let format = "png";
-      let quality = 100;
-      
-      if (contentSize.height > 10000) {
-        format = "jpeg";
-        quality = 80;
-      }
-
       const screenshotParams = {
-        format: format,
-        quality: quality,
-        fromSurface: true,
+        format: "png",
         captureBeyondViewport: true,
         clip: {
           x: 0,
@@ -44,27 +32,27 @@ chrome.action.onClicked.addListener(async (tab) => {
         }
       };
 
-      // 4. Suoritetaan kaappaus
+      console.log("Yritetään kaappausta...");
       chrome.debugger.sendCommand(target, "Page.captureScreenshot", screenshotParams, (result) => {
         if (chrome.runtime.lastError) {
-          console.error("Capture failed:", chrome.runtime.lastError);
+          console.error("Kaappausvirhe:", chrome.runtime.lastError.message);
         } else if (result && result.data) {
-          const extension = format === "png" ? "png" : "jpg";
-          const dataUrl = `data:image/${format};base64,${result.data}`;
+          console.log("Kuva saatu! Tallennetaan...");
+          const dataUrl = "data:image/png;base64," + result.data;
           
           chrome.downloads.download({
             url: dataUrl,
-            filename: `capture-${Date.now()}.${extension}`
+            filename: `kaappaus-${Date.now()}.png`
+          }, (downloadId) => {
+            console.log("Lataus aloitettu, ID:", downloadId);
           });
         }
         
-        // 5. Irrotetaan debuggeri aina lopuksi
         chrome.debugger.detach(target);
       });
     });
   } catch (err) {
-    console.error("Execution failed:", err);
-    // Varmistetaan, ettei debugger jää roikkumaan virhetilanteessa
+    console.error("Kriittinen virhe:", err.message);
     chrome.debugger.detach(target).catch(() => {});
   }
 });
