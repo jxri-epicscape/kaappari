@@ -32,4 +32,6 @@ Enable Developer mode (top right).
 
 Click Load unpacked and select the project folder.
 
+Remember to pin it!
+
 Note: When running, click "Cancel" on the debugger warning bar to keep it active, or simply ignore it during the capture.
