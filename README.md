@@ -32,6 +32,16 @@ Enable Developer mode (top right).
 
 Click Load unpacked and select the project folder.
 
+🧠 Lessons Learned
+
+While developing this tool, I faced a classic hardware-software bottleneck: capturing extremely long web pages (like heavy news portals) caused the browser process to crash with a SIGTRAP error due to memory limits in the PNG encoding buffer.
+
+My solution: I researched the Chrome DevTools Protocol limits and implemented a dynamic "Guardrail" logic. The extension now monitors layout metrics and automatically switches to an optimized JPEG format for pages exceeding 10,000px. This project taught me the importance of handling edge cases in resource-constrained environments—a crucial skill for building production-grade browser tools.
+
 Remember to pin it!
 
 Note: When running, click "Cancel" on the debugger warning bar to keep it active, or simply ignore it during the capture.
+
+---
+### Credits
+Icon designed by [icon wind](https://www.flaticon.com/authors/icon-wind) from [Flaticon](https://www.flaticon.com/).
