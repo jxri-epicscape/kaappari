@@ -1,62 +1,70 @@
 chrome.action.onClicked.addListener(async (tab) => {
-  // Estetään yritykset kaapata selaimen omia sisäisiä sivuja
-  if (tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) return;
+  // 1. Turvatarkistus: Ei toimi Chromen sisäisillä sivuilla
+  if (!tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) {
+    console.warn("Cannot capture system pages.");
+    return;
+  }
 
   const target = { tabId: tab.id };
 
   try {
-    // 1. Kiinnitetään debuggeri
+    // 2. Kiinnitetään debuggeri
     await chrome.debugger.attach(target, "1.3");
 
-    // 2. Pyydetään sivun todelliset mitat
-    chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, (metrics) => {
+    // 3. Haetaan mitat (käytetään promise-pohjaista kutsua)
+    chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, async (metrics) => {
+      if (chrome.runtime.lastError) {
+        console.error(chrome.runtime.lastError);
+        chrome.debugger.detach(target);
+        return;
+      }
+
       const { contentSize } = metrics;
       
-      // --- SUOJAKAIDE ALKAA ---
+      // --- SUOJAKAIDE ---
       let format = "png";
       let quality = 100;
       
-      // Jos sivu on yli 10 000 pikseliä korkea, vaihdetaan JPEG-muotoon vakauden vuoksi
       if (contentSize.height > 10000) {
         format = "jpeg";
-        quality = 80; 
-        console.log("Large page detected: Switching to optimized JPEG to prevent crash.");
+        quality = 80;
       }
-      // --- SUOJAKAIDE PÄÄTTYY ---
 
-      // 3. Määritetään kaappausasetukset dynaamisesti
       const screenshotParams = {
         format: format,
         quality: quality,
+        fromSurface: true,
         captureBeyondViewport: true,
         clip: {
-          x: 0, y: 0,
-          width: contentSize.width,
-          height: contentSize.height,
+          x: 0,
+          y: 0,
+          width: Math.floor(contentSize.width),
+          height: Math.floor(contentSize.height),
           scale: 1
         }
       };
 
       // 4. Suoritetaan kaappaus
       chrome.debugger.sendCommand(target, "Page.captureScreenshot", screenshotParams, (result) => {
-        if (result && result.data) {
+        if (chrome.runtime.lastError) {
+          console.error("Capture failed:", chrome.runtime.lastError);
+        } else if (result && result.data) {
           const extension = format === "png" ? "png" : "jpg";
-          const url = `data:image/${format};base64,` + result.data;
+          const dataUrl = `data:image/${format};base64,${result.data}`;
           
-          // 5. Tallennetaan tiedosto aikaleimalla
           chrome.downloads.download({
-            url: url,
+            url: dataUrl,
             filename: `capture-${Date.now()}.${extension}`
           });
         }
         
-        // 6. Irrotetaan debuggeri aina onnistumisen jälkeen
+        // 5. Irrotetaan debuggeri aina lopuksi
         chrome.debugger.detach(target);
       });
     });
   } catch (err) {
-    console.error("Debugger error:", err);
-    // Varmistetaan irrotus virhetilanteessa, ettei palkki jää jumiin
-    chrome.debugger.detach(target);
+    console.error("Execution failed:", err);
+    // Varmistetaan, ettei debugger jää roikkumaan virhetilanteessa
+    chrome.debugger.detach(target).catch(() => {});
   }
 });
