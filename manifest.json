@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Koko Sivun Kaappari",
+  "version": "1.0",
+  "permissions": ["debugger", "activeTab", "downloads"],
+  "action": {
+    "default_title": "Ota koko sivun kuvakaappaus"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
