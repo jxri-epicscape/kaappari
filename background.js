@@ -1,9 +1,26 @@
+/**
+ * PROJECT: Native Full-Page Capture Engine
+ * PURPOSE: This extension uses the Chrome DevTools Protocol (CDP) to perform 
+ * high-fidelity, full-page screenshots. 
+ * * WHY DEBUGGER API? 
+ * Standard APIs like chrome.tabs.captureVisibleTab are limited to the current viewport. 
+ * To capture the entire page without "scroll-and-stitch" artifacts, we use 
+ * 'Page.captureScreenshot' with 'captureBeyondViewport: true'. 
+ * This requires the debugger permission to interface directly with the Blink engine.
+ */
+
 const updateUI = (tabId, text, color = "#4688F1") => {
   chrome.action.setBadgeText({ tabId, text });
   chrome.action.setBadgeBackgroundColor({ tabId, color });
 };
 
 chrome.action.onClicked.addListener(async (tab) => {
+  // Prevent running on protected chrome:// pages
+  if (tab.url?.startsWith("chrome://")) {
+    updateUI(tab.id, "ERR", "#000000");
+    return;
+  }
+
   const target = { tabId: tab.id };
   updateUI(tab.id, "...");
 
@@ -12,13 +29,15 @@ chrome.action.onClicked.addListener(async (tab) => {
     updateUI(tab.id, "REC", "#EA4335");
 
     chrome.debugger.sendCommand(target, "Page.getLayoutMetrics", {}, async (metrics) => {
-      const { contentSize, visualViewport } = metrics;
+      if (chrome.runtime.lastError || !metrics) {
+        throw new Error("Failed to get metrics");
+      }
 
-      // Käytetään visualViewportia leveytenä, jotta vältetään tyhjät reunat Windowsilla
+      const { contentSize, visualViewport } = metrics;
       const width = Math.floor(visualViewport.clientWidth);
       const height = Math.floor(contentSize.height);
 
-      // 1. PAKOTETAAN SKAALAUS (Korjaa Mac/Retina mosaiikki-ilmiön)
+      // Fix for Mac/Retina: Force 1:1 scale to prevent mosaic artifacts
       await chrome.debugger.sendCommand(target, "Emulation.setDeviceMetricsOverride", {
         width: width,
         height: height,
@@ -26,6 +45,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         mobile: false
       });
 
+      // Guardrail: Switch to JPEG for extremely long pages to prevent memory overflow (SIGTRAP)
       let format = height > 10000 ? "jpeg" : "png";
       let quality = format === "jpeg" ? 80 : 100;
 
@@ -37,7 +57,6 @@ chrome.action.onClicked.addListener(async (tab) => {
         clip: { x: 0, y: 0, width: width, height: height, scale: 1 }
       };
 
-      // 2. OTETAAN KAAPPAUS
       chrome.debugger.sendCommand(target, "Page.captureScreenshot", screenshotParams, async (result) => {
         if (!chrome.runtime.lastError && result?.data) {
           const extension = format === "png" ? "png" : "jpg";
@@ -51,12 +70,13 @@ chrome.action.onClicked.addListener(async (tab) => {
           }, () => updateUI(tab.id, ""));
         }
         
-        // 3. PALAUTETAAN ASETUKSET JA IRROTETAAN
+        // Cleanup: Reset metrics and detach
         await chrome.debugger.sendCommand(target, "Emulation.clearDeviceMetricsOverride", {});
         chrome.debugger.detach(target);
       });
     });
   } catch (err) {
+    console.error("Capture failed:", err);
     updateUI(tab.id, "ERR", "#000000");
     chrome.debugger.detach(target).catch(() => {});
     setTimeout(() => updateUI(tab.id, ""), 3000);
