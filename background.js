@@ -51,6 +51,8 @@ chrome.action.onClicked.addListener(async (tab) => {
         deviceScaleFactor: 1,
         mobile: false
       });
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
 
       // Guardrail: Switch to JPEG for long pages to manage memory usage
       let format = finalHeight > 8000 ? "jpeg" : "png";
@@ -61,7 +63,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         quality: quality,
         fromSurface: true,
         captureBeyondViewport: true,
-        clip: { x: 0, y: 0, width: width, height: finalHeight, scale: 1 }
+        clip: { x: 0, y: 0, width: width, height: MAX_HEIGHT, scale: 1 }
       };
 
       chrome.debugger.sendCommand(target, "Page.captureScreenshot", screenshotParams, async (result) => {
