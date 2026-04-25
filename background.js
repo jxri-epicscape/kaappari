@@ -38,7 +38,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       const { contentSize, visualViewport } = metrics;
       const width = Math.floor(visualViewport.clientWidth);
       const fullHeight = Math.floor(contentSize.height);
-
+      const viewportHeight = Math.floor(visualViewport.clientHeight);
       // Apply the hard limit (Option A)
       const finalHeight = Math.min(fullHeight, MAX_HEIGHT);
       const isClipped = fullHeight > MAX_HEIGHT;
@@ -47,7 +47,7 @@ chrome.action.onClicked.addListener(async (tab) => {
       // We use finalHeight here to ensure the viewport matches our intended capture area
       await chrome.debugger.sendCommand(target, "Emulation.setDeviceMetricsOverride", {
         width: width,
-        height: finalHeight,
+        height: visualViewport.clientHeight,
         deviceScaleFactor: 1,
         mobile: false
       });
