@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Native Full-Page Capture Engine",
+  "name": "Kaappari",
   "version": "1.0",
   "description": "Capture entire web pages in high definition using the native Blink rendering engine.",
   "permissions": [
