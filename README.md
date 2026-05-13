@@ -35,7 +35,7 @@ This is the same permission used by React Developer Tools, Redux DevTools, and C
 
 ## Installation
 
-From Chrome Web Store (Recommended) Click here to install Kaappari
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install_Kaappari-blue?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/jegngcddgeglbieehhljghjchjdldcfb?utm_source=item-share-cb)
 
 Developer Mode
 1. Clone this repository.
