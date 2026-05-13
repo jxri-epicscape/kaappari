@@ -33,8 +33,11 @@ This is the same permission used by React Developer Tools, Redux DevTools, and C
 - Chrome Extension API (Manifest V3)
 - Chrome DevTools Protocol (CDP)
 
-## Installation (Developer Mode)
+## Installation
 
+From Chrome Web Store (Recommended) Click here to install Kaappari
+
+Developer Mode
 1. Clone this repository.
 2. Open Chrome and navigate to `chrome://extensions`.
 3. Enable **Developer mode** (top right).
