@@ -1,6 +1,8 @@
 # kaappari
 Native Full-Page Capture Engine
 
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install_Kaappari-blue?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/jegngcddgeglbieehhljghjchjdldcfb?utm_source=item-share-cb)
+
 A high-performance Chrome Extension designed to bypass the limitations of standard viewport capturing. Instead of the traditional "scroll-and-stitch" method, this tool interacts directly with the browser's rendering engine.
 
 ## The Core Difference
@@ -34,8 +36,6 @@ This is the same permission used by React Developer Tools, Redux DevTools, and C
 - Chrome DevTools Protocol (CDP)
 
 ## Installation
-
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Install_Kaappari-blue?style=for-the-badge&logo=google-chrome&logoColor=white)](https://chromewebstore.google.com/detail/jegngcddgeglbieehhljghjchjdldcfb?utm_source=item-share-cb)
 
 Developer Mode
 1. Clone this repository.
